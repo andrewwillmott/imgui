@@ -3902,23 +3902,27 @@ void ImGui::RenderArrow(ImDrawList* draw_list, ImVec2 pos, ImU32 col, ImGuiDir d
     case ImGuiDir_Up:
     case ImGuiDir_Down:
         if (dir == ImGuiDir_Up) r = -r;
-        a = ImVec2(+0.000f, +0.750f) * r;
-        b = ImVec2(-0.866f, -0.750f) * r;
-        c = ImVec2(+0.866f, -0.750f) * r;
+        a = ImVec2(+0.00f, +0.75f) * r;
+        b = ImVec2(-0.75f, +0.00f) * r;
+        c = ImVec2(+0.75f, +0.00f) * r;
         break;
     case ImGuiDir_Left:
     case ImGuiDir_Right:
         if (dir == ImGuiDir_Left) r = -r;
-        a = ImVec2(+0.750f, +0.000f) * r;
-        b = ImVec2(-0.750f, +0.866f) * r;
-        c = ImVec2(-0.750f, -0.866f) * r;
+        a = ImVec2(+0.75f, +0.00f) * r;
+        b = ImVec2(+0.00f, +0.75f) * r;
+        c = ImVec2(+0.00f, -0.75f) * r;
         break;
     case ImGuiDir_None:
     case ImGuiDir_COUNT:
         IM_ASSERT(0);
         break;
     }
-    draw_list->AddTriangleFilled(center + a, center + b, center + c, col);
+
+    draw_list->PathLineTo(center + b);
+    draw_list->PathLineTo(center + a);
+    draw_list->PathLineTo(center + c);
+    draw_list->PathStroke(col, 0, h * 0.11f * scale);
 }
 
 void ImGui::RenderBullet(ImDrawList* draw_list, ImVec2 pos, ImU32 col)

@@ -8878,6 +8878,7 @@ void ImGui::ShowStyleEditor(ImGuiStyle* ref)
 
             DragFloat("Global Alpha", &style.Alpha, 0.005f, 0.20f, 1.0f, "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
             DragFloat("Disabled Alpha", &style.DisabledAlpha, 0.005f, 0.0f, 1.0f, "%.2f"); SameLine(); HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
+            DragFloat("Gradient", &style.Gradient , 0.01f, -0.5f, 0.5f, "%.2f");
             PopItemWidth();
 
             EndTabItem();

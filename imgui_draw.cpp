@@ -1084,6 +1084,33 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
 
 // - We intentionally avoid using ImVec2 and its math operators here to reduce cost to a minimum for debug/non-inlined builds.
 // - Filled shapes must always use clockwise winding order. The anti-aliasing fringe depends on it. Counter-clockwise shapes will have "inward" anti-aliasing.
+
+namespace
+{
+    IMGUI_API ImU32 ImBlendColors(ImU32 col_a, ImU32 col_b, float t)
+    {
+        int r = ImLerp((int)(col_a >> IM_COL32_R_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_R_SHIFT) & 0xFF, t);
+        int g = ImLerp((int)(col_a >> IM_COL32_G_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_G_SHIFT) & 0xFF, t);
+        int b = ImLerp((int)(col_a >> IM_COL32_B_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_B_SHIFT) & 0xFF, t);
+        int a = ImLerp((int)(col_a >> IM_COL32_A_SHIFT) & 0xFF, (int)(col_b >> IM_COL32_A_SHIFT) & 0xFF, t);
+        return IM_COL32(r, g, b, a);
+    }
+
+    IMGUI_API ImU32 ImScaleRGB(ImU32 col_a, float t)
+    {
+        int r = (int) (((col_a >> IM_COL32_R_SHIFT) & 0xFF) * t);
+        int g = (int) (((col_a >> IM_COL32_G_SHIFT) & 0xFF) * t);
+        int b = (int) (((col_a >> IM_COL32_B_SHIFT) & 0xFF) * t);
+        if (t > 1.0f)
+        {
+            r = r < 256 ? r : 255;
+            g = g < 256 ? g : 255;
+            b = b < 256 ? b : 255;
+        }
+        return IM_COL32(r, g, b, (col_a >> IM_COL32_A_SHIFT));
+    }
+}
+
 void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_count, ImU32 col)
 {
     if (points_count < 3 || (col & IM_COL32_A_MASK) == 0)
@@ -1091,11 +1118,30 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
 
     const ImVec2 uv = _Data->TexUvWhitePixel;
 
+    ImVec2 bmin = { +FLT_MAX, +FLT_MAX };
+    ImVec2 bmax = { -FLT_MAX, -FLT_MAX };
+
+    for (int i = 0; i < points_count; i++)
+    {
+        if (bmin.x > points[i].x)
+            bmin.x = points[i].x;
+        if (bmax.x < points[i].x)
+            bmax.x = points[i].x;
+        if (bmin.y > points[i].y)
+            bmin.y = points[i].y;
+        if (bmax.y < points[i].y)
+            bmax.y = points[i].y;
+    }
+
+    float xscale = (bmin.x == bmax.x) ? 1.0f : 1.0f / (bmax.x - bmin.x);
+    float yscale = (bmin.y == bmax.y) ? 1.0f : 1.0f / (bmax.y - bmin.y);
+
+    ImU32 col2 = ImScaleRGB(col, 1.0f + _Data->Gradient);
+
     if (Flags & ImDrawListFlags_AntiAliasedFill)
     {
         // Anti-aliased Fill
         const float AA_SIZE = _FringeScale;
-        const ImU32 col_trans = col & ~IM_COL32_A_MASK;
         const int idx_count = (points_count - 2)*3 + points_count * 6;
         const int vtx_count = (points_count * 2);
         PrimReserve(idx_count, vtx_count);
@@ -1134,9 +1180,16 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
             dm_x *= AA_SIZE * 0.5f;
             dm_y *= AA_SIZE * 0.5f;
 
+            float ty = (points[i1].y - bmin.y) * yscale;
+            float tx = (points[i1].x - bmin.x) * xscale;
+            float t = ty; // sqrtf(tx * tx + ty * ty);
+            if (t > 1.0f) t = 1.0f;
+            ImU32 c = ImBlendColors(col, col2, t);
+            ImU32 ca = c & ~IM_COL32_A_MASK;
+
             // Add vertices
-            _VtxWritePtr[0].pos.x = (points[i1].x - dm_x); _VtxWritePtr[0].pos.y = (points[i1].y - dm_y); _VtxWritePtr[0].uv = uv; _VtxWritePtr[0].col = col;        // Inner
-            _VtxWritePtr[1].pos.x = (points[i1].x + dm_x); _VtxWritePtr[1].pos.y = (points[i1].y + dm_y); _VtxWritePtr[1].uv = uv; _VtxWritePtr[1].col = col_trans;  // Outer
+            _VtxWritePtr[0].pos.x = (points[i1].x - dm_x); _VtxWritePtr[0].pos.y = (points[i1].y - dm_y); _VtxWritePtr[0].uv = uv; _VtxWritePtr[0].col = c;        // Inner
+            _VtxWritePtr[1].pos.x = (points[i1].x + dm_x); _VtxWritePtr[1].pos.y = (points[i1].y + dm_y); _VtxWritePtr[1].uv = uv; _VtxWritePtr[1].col = ca;  // Outer
             _VtxWritePtr += 2;
 
             // Add indexes for fringes
@@ -1154,7 +1207,10 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
         PrimReserve(idx_count, vtx_count);
         for (int i = 0; i < vtx_count; i++)
         {
-            _VtxWritePtr[0].pos = points[i]; _VtxWritePtr[0].uv = uv; _VtxWritePtr[0].col = col;
+            float t = (points[i].y - bmin.y) * yscale;
+            ImU32 c = ImBlendColors(col, col2, t);
+
+            _VtxWritePtr[0].pos = points[i]; _VtxWritePtr[0].uv = uv; _VtxWritePtr[0].col = c;
             _VtxWritePtr++;
         }
         for (int i = 2; i < points_count; i++)

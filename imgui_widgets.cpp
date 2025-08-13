@@ -6605,9 +6605,10 @@ bool ImGui::Selectable(const char* label, bool selected, ImGuiSelectableFlags fl
         g.LastItemData.StatusFlags |= ImGuiItemStatusFlags_ToggledSelection;
 
     // Render
-    if (hovered || selected)
+    const bool hover_highlight = held || (hovered && (flags & ImGuiSelectableFlags_NoHoverHighlight) == 0);
+    if (selected || hover_highlight)
     {
-        const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : hovered ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
+        const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : (hover_highlight && hovered) ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
         RenderFrame(bb.Min, bb.Max, col, false, 0.0f);
     }
     if (g.NavId == id)

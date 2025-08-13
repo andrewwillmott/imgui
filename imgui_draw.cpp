@@ -1013,7 +1013,7 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
             bmax.y = points[i].y;
     }
 
-    float xscale = (bmin.x == bmax.x) ? 1.0f : 1.0f / (bmax.x - bmin.x);
+    //float xscale = (bmin.x == bmax.x) ? 1.0f : 1.0f / (bmax.x - bmin.x);
     float yscale = (bmin.y == bmax.y) ? 1.0f : 1.0f / (bmax.y - bmin.y);
 
     ImU32 col2 = ImScaleRGB(col, 1.0f + _Data->Gradient);
@@ -1061,7 +1061,7 @@ void ImDrawList::AddConvexPolyFilled(const ImVec2* points, const int points_coun
             dm_y *= AA_SIZE * 0.5f;
 
             float ty = (points[i1].y - bmin.y) * yscale;
-            float tx = (points[i1].x - bmin.x) * xscale;
+            //float tx = (points[i1].x - bmin.x) * xscale;
             float t = ty; // sqrtf(tx * tx + ty * ty);
             if (t > 1.0f) t = 1.0f;
             ImU32 c = ImBlendColors(col, col2, t);

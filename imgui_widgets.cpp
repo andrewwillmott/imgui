@@ -7539,11 +7539,11 @@ bool ImGui::Selectable(const char* label, bool selected, ImGuiSelectableFlags fl
     // Render
     if (is_visible)
     {
-        const bool highlighted = hovered || (flags & ImGuiSelectableFlags_Highlight);
-        if (highlighted || selected)
+        const bool hover_highlight = held || (hovered && (flags & ImGuiSelectableFlags_NoHoverHighlight) == 0);
+        if (selected || hover_highlight)
         {
             // Between 1.91.0 and 1.91.4 we made selected Selectable use an arbitrary lerp between _Header and _HeaderHovered. Removed that now. (#8106)
-            ImU32 col = GetColorU32((held && highlighted) ? ImGuiCol_HeaderActive : highlighted ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
+            const ImU32 col = GetColorU32((held && hovered) ? ImGuiCol_HeaderActive : (hover_highlight && hovered) ? ImGuiCol_HeaderHovered : ImGuiCol_Header);
             RenderFrame(bb.Min, bb.Max, col, false, style.SelectableRounding);
         }
         if (g.NavId == id)
